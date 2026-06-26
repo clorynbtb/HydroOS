@@ -590,5 +590,325 @@ void carbon_backspace(void) {
     }
 }
 `
+  },
+  {
+    name: 'boron_app.c',
+    path: 'apps/boron_app.c',
+    language: 'c',
+    description: 'Boron Calculator [B] - ELEMENT 5: Máy tính logic giao diện Vintage Minimalist',
+    content: `/**
+ * @file boron_app.c
+ * @brief Boron Calculator [B] - ELEMENT 5
+ * Máy tính logic (Calculator) trong hệ sinh thái HydroOS
+ * Vintage Minimalist Design - Pixel Perfect Geometry
+ * Compiled with: clang -target x86_64-none-elf -ffreestanding
+ */
+
+#include <stdint.h>
+#include <stddef.h>
+
+/* =============================================================================
+ * VINTAGE COLOR PALETTE - Notion Warm Manuscript Theme
+ * ============================================================================= */
+#define COLOR_HE_BG      0xFFF5EFE6  /* Trắng kem ấm */
+#define COLOR_LI_BG      0xFFEFEBE9  /* Nâu Latte nhạt */
+#define COLOR_DB_BG      0xFFE0D4C3  /* Nâu gỗ sáng */
+#define COLOR_TEXT       0xFF3E2723  /* Espresso nâu đậm */
+#define COLOR_BORDER     0xFFD7CCC8  /* Nâu tro mảnh 1px */
+#define COLOR_WHITE      0xFFFFFFFF  /* Trắng ngà */
+#define COLOR_EMERALD    0xFF10B981  /* Emerald accent */
+
+/* ELEMENT 5: BORON - Properties */
+#define BORON_ATOMIC_NUMBER  5
+#define BORON_SYMBOL         "B"
+#define BORON_FULL_NAME      "Boron"
+
+/* =============================================================================
+ * WINDOW GEOMETRY - Exact Pixel Coordinates
+ * Cửa sổ vuông gọn gàng: X=312, Y=184, W=400, H=400
+ * ============================================================================= */
+#define BORON_WIN_X      312
+#define BORON_WIN_Y      184
+#define BORON_WIN_W      400
+#define BORON_WIN_H      400
+#define BORON_TITLE_H    28
+
+/* Calculator Display Screen */
+#define DISPLAY_X        332
+#define DISPLAY_Y        224
+#define DISPLAY_W        360
+#define DISPLAY_H        48
+
+/* Button Grid Layout */
+#define KEY_START_X      332
+#define KEY_START_Y      288
+#define KEY_W            75
+#define KEY_H            40
+#define KEY_SPACING      12
+
+/* =============================================================================
+ * CALCULATOR STATE
+ * ============================================================================= */
+static double current_value = 0.0;
+static double stored_value = 0.0;
+static char operator = '\\0';
+static int has_operator = 0;
+static char display_buffer[16] = "0";
+
+/* =============================================================================
+ * DRAW BORON WINDOW FRAME - With Retro Hard Shadow
+ * ============================================================================= */
+void draw_boron_frame(struct limine_framebuffer *fb) {
+    /* Hard Shadow (2px offset down-right) */
+    draw_rect_filled(fb, BORON_WIN_X + 2, BORON_WIN_Y + 2, BORON_WIN_W, BORON_WIN_H, COLOR_BORDER);
+
+    /* Main Window Background - COLOR_WHITE */
+    draw_rect_filled(fb, BORON_WIN_X, BORON_WIN_Y, BORON_WIN_W, BORON_WIN_H, COLOR_WHITE);
+
+    /* Window Border - 1px nâu tro */
+    draw_rect_outline(fb, BORON_WIN_X, BORON_WIN_Y, BORON_WIN_W, BORON_WIN_H, COLOR_BORDER, COLOR_WHITE);
+}
+
+/* =============================================================================
+ * DRAW TITLE BAR
+ * X=312, Y=184, W=400, H=28
+ * ============================================================================= */
+void draw_boron_title(struct limine_framebuffer *fb) {
+    /* Title Bar Background - COLOR_HE_BG (Kem ấm) */
+    draw_rect_filled(fb, BORON_WIN_X, BORON_WIN_Y, BORON_WIN_W, BORON_TITLE_H, COLOR_HE_BG);
+
+    /* Title Bar Bottom Border - 1px */
+    draw_line(fb, BORON_WIN_X, BORON_WIN_Y + BORON_TITLE_H - 1,
+              BORON_WIN_X + BORON_WIN_W, BORON_WIN_Y + BORON_TITLE_H - 1, COLOR_BORDER);
+
+    /* Periodic Table Mini Box: Element "B" */
+    int box_x = BORON_WIN_X + 8;
+    int box_y = BORON_WIN_Y + 5;
+    draw_rect_filled(fb, box_x, box_y, 18, 18, COLOR_WHITE);
+    draw_rect_outline(fb, box_x, box_y, 18, 18, COLOR_BORDER, COLOR_WHITE);
+    draw_char(fb, box_x + 5, box_y + 5, 'B', COLOR_TEXT);
+
+    /* Title Text: "ELEMENT 5: BORON (CALCULATOR)" at X=324, Y=192 */
+    /* Title Y baseline = BORON_WIN_Y + 8 = 192 */
+    draw_string(fb, BORON_WIN_X + 32, BORON_WIN_Y + 9, "ELEMENT 5: BORON (CALCULATOR)", COLOR_TEXT);
+}
+
+/* =============================================================================
+ * DRAW CALCULATOR DISPLAY SCREEN
+ * X=332, Y=224, W=360, H=48
+ * ============================================================================= */
+void draw_boron_display(struct limine_framebuffer *fb) {
+    /* LCD Screen Background - COLOR_HE_BG (Kem ấm, classic LCD feel) */
+    draw_rect_filled(fb, DISPLAY_X, DISPLAY_Y, DISPLAY_W, DISPLAY_H, COLOR_HE_BG);
+
+    /* Display Border - 1px */
+    draw_rect_outline(fb, DISPLAY_X, DISPLAY_Y, DISPLAY_W, DISPLAY_H, COLOR_BORDER, COLOR_HE_BG);
+
+    /* Format number with commas and decimals */
+    /* Example: "12,345.00" displayed right-aligned */
+    int text_len = 0;
+    while (display_buffer[text_len]) text_len++;
+
+    /* Right-align: X=670 is right edge, subtract text width (8px per char) */
+    /* DISPLAY_X + DISPLAY_W = 332 + 360 = 692, right margin ~22px */
+    int text_x = DISPLAY_X + DISPLAY_W - 12 - (text_len * 8);
+    int text_y = DISPLAY_Y + 16;
+
+    /* Draw display value in Espresso brown */
+    draw_string(fb, text_x, text_y, display_buffer, COLOR_TEXT);
+}
+
+/* =============================================================================
+ * DRAW SINGLE BUTTON KEY
+ * ============================================================================= */
+void draw_boron_key(struct limine_framebuffer *fb, int x, int y, const char *label, int is_function) {
+    uint32_t bg_color = is_function ? COLOR_LI_BG : COLOR_HE_BG;
+
+    /* Button Background */
+    draw_rect_filled(fb, x, y, KEY_W, KEY_H, bg_color);
+
+    /* Button Border - 1px */
+    draw_rect_outline(fb, x, y, KEY_W, KEY_H, COLOR_BORDER, bg_color);
+
+    /* Button Label - centered horizontally and vertically */
+    int label_len = 0;
+    while (label[label_len]) label_len++;
+
+    /* Center X: button_x + (KEY_W - label_width) / 2 */
+    int label_x = x + (KEY_W - label_len * 8) / 2;
+    /* Center Y: button_y + (KEY_H - 8) / 2 */
+    int label_y = y + (KEY_H - 8) / 2;
+
+    draw_string(fb, label_x, label_y, label, COLOR_TEXT);
+}
+
+/* =============================================================================
+ * DRAW BUTTON GRID LAYOUT
+ * 4 hàng x 4 cột, mỗi phím W=75, H=40, spacing=12px
+ * Start: X=332, Y=288
+ * ============================================================================= */
+void draw_boron_keys(struct limine_framebuffer *fb) {
+    /* Key labels: 4 rows x 4 cols */
+    const char *key_labels[4][4] = {
+        { "7", "8", "9", "/" },
+        { "4", "5", "6", "*" },
+        { "1", "2", "3", "-" },
+        { "C", "0", "=", "+" }
+    };
+
+    /* is_function: 1 for operators and C/= */
+    const int is_func[4][4] = {
+        { 0, 0, 0, 1 },
+        { 0, 0, 0, 1 },
+        { 0, 0, 0, 1 },
+        { 1, 0, 1, 1 }
+    };
+
+    /* Draw each key button */
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            /* Calculate position: start + (col * (KEY_W + spacing)), same for row */
+            int key_x = KEY_START_X + col * (KEY_W + KEY_SPACING);
+            int key_y = KEY_START_Y + row * (KEY_H + KEY_SPACING);
+
+            draw_boron_key(fb, key_x, key_y, key_labels[row][col], is_func[row][col]);
+        }
+    }
+}
+
+/* =============================================================================
+ * MAIN BORON APP RENDER FUNCTION
+ * ============================================================================= */
+void show_boron_app(struct limine_framebuffer *fb) {
+    /* 1. Draw window frame with retro shadow */
+    draw_boron_frame(fb);
+
+    /* 2. Draw title bar with element info */
+    draw_boron_title(fb);
+
+    /* 3. Draw LCD display screen */
+    draw_boron_display(fb);
+
+    /* 4. Draw mechanical button grid */
+    draw_boron_keys(fb);
+}
+
+/* =============================================================================
+ * CALCULATOR LOGIC FUNCTIONS
+ * ============================================================================= */
+
+/* Initialize Boron Calculator */
+void boron_app_init(void) {
+    current_value = 0.0;
+    stored_value = 0.0;
+    operator = '\\0';
+    has_operator = 0;
+    display_buffer[0] = '0';
+    display_buffer[1] = '\\0';
+}
+
+/* Handle digit input */
+void boron_digit(int digit) {
+    int len = 0;
+    while (display_buffer[len]) len++;
+
+    if (len < 15) {
+        if (display_buffer[0] == '0' && len == 1) {
+            display_buffer[0] = '0' + digit;
+        } else {
+            display_buffer[len] = '0' + digit;
+            display_buffer[len + 1] = '\\0';
+        }
+    }
+    current_value = boron_atoi(display_buffer);
+}
+
+/* Handle operator input */
+void boron_operator(char op) {
+    stored_value = current_value;
+    operator = op;
+    has_operator = 1;
+    display_buffer[0] = '0';
+    display_buffer[1] = '\\0';
+}
+
+/* Calculate result */
+void boron_equals(void) {
+    double result = 0.0;
+
+    switch (operator) {
+        case '+': result = stored_value + current_value; break;
+        case '-': result = stored_value - current_value; break;
+        case '*': result = stored_value * current_value; break;
+        case '/':
+            if (current_value != 0.0) {
+                result = stored_value / current_value;
+            } else {
+                result = 0.0;
+            }
+            break;
+        default: result = current_value; break;
+    }
+
+    current_value = result;
+    boron_format_number(result, display_buffer);
+    has_operator = 0;
+}
+
+/* Clear calculator */
+void boron_clear(void) {
+    current_value = 0.0;
+    stored_value = 0.0;
+    operator = '\\0';
+    has_operator = 0;
+    display_buffer[0] = '0';
+    display_buffer[1] = '\\0';
+}
+
+/* Helper: Simple string to integer */
+static int boron_atoi(const char *s) {
+    int result = 0;
+    while (*s >= '0' && *s <= '9') {
+        result = result * 10 + (*s - '0');
+        s++;
+    }
+    return result;
+}
+
+/* Helper: Format number to display string */
+static void boron_format_number(double val, char *buf) {
+    int int_part = (int)val;
+    int i = 0;
+
+    if (int_part == 0) {
+        buf[i++] = '0';
+    } else {
+        int temp = int_part;
+        int digits[16];
+        int d = 0;
+
+        while (temp > 0) {
+            digits[d++] = temp % 10;
+            temp /= 10;
+        }
+
+        /* Add commas every 3 digits */
+        int comma_counter = 0;
+        for (int j = d - 1; j >= 0; j--) {
+            buf[i++] = '0' + digits[j];
+            comma_counter++;
+            if (j > 0 && comma_counter == 3) {
+                buf[i++] = ',';
+                comma_counter = 0;
+            }
+        }
+    }
+
+    buf[i++] = '.';
+    buf[i++] = '0';
+    buf[i++] = '0';
+    buf[i] = '\\0';
+}
+`
   }
 ];
