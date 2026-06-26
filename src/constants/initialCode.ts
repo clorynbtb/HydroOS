@@ -910,5 +910,367 @@ static void boron_format_number(double val, char *buf) {
     buf[i] = '\\0';
 }
 `
+  },
+  {
+    name: 'titanium_app.c',
+    path: 'apps/titanium_app.c',
+    language: 'c',
+    description: 'Titanium Time & Timeline [Ti] - ELEMENT 22: Đồng hồ & Lịch trình với giao diện Vintage Minimalist',
+    content: `/**
+ * @file titanium_app.c
+ * @brief Titanium Time & Timeline [Ti] - ELEMENT 22
+ * Đồng hồ & Lịch trình (Clock & Timeline) trong hệ sinh thái HydroOS
+ * Vintage Minimalist Design - Split Panel Layout
+ * Compiled with: clang -target x86_64-none-elf -ffreestanding
+ */
+
+#include <stdint.h>
+#include <stddef.h>
+
+/* =============================================================================
+ * VINTAGE COLOR PALETTE - Notion Warm Manuscript Theme
+ * ============================================================================= */
+#define COLOR_HE_BG      0xFFF5EFE6  /* Trắng kem ấm */
+#define COLOR_LI_BG      0xFFEFEBE9  /* Nâu Latte nhạt */
+#define COLOR_DB_BG      0xFFE0D4C3  /* Nâu gỗ sáng */
+#define COLOR_TEXT       0xFF3E2723  /* Espresso nâu đậm */
+#define COLOR_BORDER     0xFFD7CCC8  /* Nâu tro mảnh 1px */
+#define COLOR_WHITE      0xFFFFFFFF  /* Trắng ngà */
+#define COLOR_EMERALD    0xFF10B981  /* Emerald accent */
+
+/* ELEMENT 22: TITANIUM - Properties */
+#define TITANIUM_ATOMIC_NUMBER  22
+#define TITANIUM_SYMBOL         "Ti"
+#define TITANIUM_FULL_NAME       "Titanium"
+
+/* =============================================================================
+ * WINDOW GEOMETRY - Exact Pixel Coordinates
+ * Cửa sổ rộng nằm ngang: X=162, Y=154, W=700, H=460
+ * ============================================================================= */
+#define TITANIUM_WIN_X      162
+#define TITANIUM_WIN_Y      154
+#define TITANIUM_WIN_W      700
+#define TITANIUM_WIN_H      460
+#define TITANIUM_TITLE_H    28
+
+/* Split Panel Divider */
+#define SPLIT_X             432  /* Vertical divider line from Y=182 to Y=614 */
+#define LEFT_PANEL_START    162
+#define RIGHT_PANEL_START   432
+
+/* =============================================================================
+ * ANALOG CLOCK GEOMETRY - Left Panel
+ * Tâm đồng hồ: (X=297, Y=380), Bán kính R=100 pixel
+ * ============================================================================= */
+#define CLOCK_CENTER_X      297
+#define CLOCK_CENTER_Y      380
+#define CLOCK_RADIUS        100
+
+/* Clock Hand Lengths */
+#define HOUR_HAND_LEN       50
+#define MINUTE_HAND_LEN     75
+#define SECOND_HAND_LEN     85
+
+/* =============================================================================
+ * TIMELINE GEOMETRY - Right Panel
+ * Margin trái bắt đầu từ X=460
+ * ============================================================================= */
+#define TIMELINE_MARGIN_X   460
+#define TIMELINE_START_Y    220
+
+/* Event dot positions */
+#define EVENT_DOT_X         460
+#define EVENT_1_Y           260
+#define EVENT_2_Y           300
+#define EVENT_3_Y           340
+
+/* =============================================================================
+ * TIME STATE
+ * ============================================================================= */
+static int current_hour = 10;
+static int current_minute = 10;
+static int current_second = 0;
+
+/* =============================================================================
+ * DRAW TITANIUM WINDOW FRAME - With Retro Hard Shadow
+ * ============================================================================= */
+void draw_titanium_frame(struct limine_framebuffer *fb) {
+    /* Hard Shadow (2px offset down-right) - COLOR_BORDER */
+    draw_rect_filled(fb, TITANIUM_WIN_X + 2, TITANIUM_WIN_Y + 2, TITANIUM_WIN_W, TITANIUM_WIN_H, COLOR_BORDER);
+
+    /* Main Window Background - COLOR_WHITE */
+    draw_rect_filled(fb, TITANIUM_WIN_X, TITANIUM_WIN_Y, TITANIUM_WIN_W, TITANIUM_WIN_H, COLOR_WHITE);
+
+    /* Window Border - 1px nâu tro */
+    draw_rect_outline(fb, TITANIUM_WIN_X, TITANIUM_WIN_Y, TITANIUM_WIN_W, TITANIUM_WIN_H, COLOR_BORDER, COLOR_WHITE);
+}
+
+/* =============================================================================
+ * DRAW TITLE BAR
+ * X=162, Y=154, W=700, H=28
+ * ============================================================================= */
+void draw_titanium_title(struct limine_framebuffer *fb) {
+    /* Title Bar Background - COLOR_HE_BG (Kem ấm) */
+    draw_rect_filled(fb, TITANIUM_WIN_X, TITANIUM_WIN_Y, TITANIUM_WIN_W, TITANIUM_TITLE_H, COLOR_HE_BG);
+
+    /* Title Bar Bottom Border - 1px */
+    draw_line(fb, TITANIUM_WIN_X, TITANIUM_WIN_Y + TITANIUM_TITLE_H - 1,
+              TITANIUM_WIN_X + TITANIUM_WIN_W, TITANIUM_WIN_Y + TITANIUM_TITLE_H - 1, COLOR_BORDER);
+
+    /* Periodic Table Mini Box: Element "Ti" */
+    int box_x = TITANIUM_WIN_X + 8;
+    int box_y = TITANIUM_WIN_Y + 5;
+    draw_rect_filled(fb, box_x, box_y, 20, 18, COLOR_WHITE);
+    draw_rect_outline(fb, box_x, box_y, 20, 18, COLOR_BORDER, COLOR_WHITE);
+    draw_string_small(fb, box_x + 3, box_y + 5, "Ti", COLOR_TEXT);
+
+    /* Title Text: "ELEMENT 22: TITANIUM (TIME & TIMELINE)" at X=174, Y=162 */
+    draw_string(fb, TITANIUM_WIN_X + 34, TITANIUM_WIN_Y + 9, "ELEMENT 22: TITANIUM (TIME & TIMELINE)", COLOR_TEXT);
+}
+
+/* =============================================================================
+ * DRAW SPLIT PANEL DIVIDER
+ * Vertical line at X=432 from Y=182 to Y=614
+ * ============================================================================= */
+void draw_split_divider(struct limine_framebuffer *fb) {
+    /* Vertical line from below title bar to bottom */
+    int divider_start_y = TITANIUM_WIN_Y + TITANIUM_TITLE_H;
+    int divider_end_y = TITANIUM_WIN_Y + TITANIUM_WIN_H;
+
+    draw_line(fb, SPLIT_X, divider_start_y, SPLIT_X, divider_end_y, COLOR_BORDER);
+}
+
+/* =============================================================================
+ * DRAW ANALOG CLOCK FACE - Left Panel
+ * Tâm (297, 380), R=100
+ * ============================================================================= */
+void draw_analog_clock(struct limine_framebuffer *fb) {
+    int cx = CLOCK_CENTER_X;
+    int cy = CLOCK_CENTER_Y;
+    int r = CLOCK_RADIUS;
+
+    /* Draw clock face circle - using Bresenham-like circle algorithm */
+    draw_circle_outline(fb, cx, cy, r, COLOR_BORDER);
+
+    /* Draw hour markers (12 marks around the clock) */
+    for (int h = 0; h < 12; h++) {
+        double angle = (h * 30.0 - 90.0) * 3.14159 / 180.0;
+        int inner_r = r - 12;
+        int outer_r = r - 4;
+
+        int x1 = cx + (int)(inner_r * cos_approx(angle));
+        int y1 = cy + (int)(inner_r * sin_approx(angle));
+        int x2 = cx + (int)(outer_r * cos_approx(angle));
+        int y2 = cy + (int)(outer_r * sin_approx(angle));
+
+        draw_line(fb, x1, y1, x2, y2, COLOR_TEXT);
+    }
+
+    /* Draw hour marks for 12, 3, 6, 9 (longer) */
+    const int major_hours[] = {0, 3, 6, 9};
+    for (int i = 0; i < 4; i++) {
+        int h = major_hours[i];
+        double angle = (h * 30.0 - 90.0) * 3.14159 / 180.0;
+        int inner_r = r - 18;
+        int outer_r = r - 4;
+
+        int x1 = cx + (int)(inner_r * cos_approx(angle));
+        int y1 = cy + (int)(inner_r * sin_approx(angle));
+        int x2 = cx + (int)(outer_r * cos_approx(angle));
+        int y2 = cy + (int)(outer_r * sin_approx(angle));
+
+        draw_line_thick(fb, x1, y1, x2, y2, COLOR_TEXT, 2);
+    }
+
+    /* Draw clock hands */
+    /* Time: 10:10:00 (classic watch display time) */
+    /* Hour hand: 50px, pointing to ~10 o'clock position */
+    /* Hour angle: (hour % 12) * 30 + minute * 0.5 degrees from 12 o'clock */
+    double hour_angle = ((10 % 12) * 30.0 + 10 * 0.5 - 90.0) * 3.14159 / 180.0;
+    int hour_end_x = cx + (int)(HOUR_HAND_LEN * cos_approx(hour_angle));
+    int hour_end_y = cy + (int)(HOUR_HAND_LEN * sin_approx(hour_angle));
+    draw_line_thick(fb, cx, cy, hour_end_x, hour_end_y, COLOR_TEXT, 3);
+
+    /* Minute hand: 75px, pointing to ~10 minute position */
+    double minute_angle = (10 * 6.0 - 90.0) * 3.14159 / 180.0;
+    int minute_end_x = cx + (int)(MINUTE_HAND_LEN * cos_approx(minute_angle));
+    int minute_end_y = cy + (int)(MINUTE_HAND_LEN * sin_approx(minute_angle));
+    draw_line_thick(fb, cx, cy, minute_end_x, minute_end_y, COLOR_TEXT, 2);
+
+    /* Second hand: 85px, pointing to 12 o'clock (0 seconds) */
+    double second_angle = (0 * 6.0 - 90.0) * 3.14159 / 180.0;
+    int second_end_x = cx + (int)(SECOND_HAND_LEN * cos_approx(second_angle));
+    int second_end_y = cy + (int)(SECOND_HAND_LEN * sin_approx(second_angle));
+    draw_line(fb, cx, cy, second_end_x, second_end_y, COLOR_DB_BG);
+
+    /* Center dot */
+    draw_circle_filled(fb, cx, cy, 4, COLOR_TEXT);
+
+    /* Draw digital time below clock */
+    char time_str[12] = "10:10:00";
+    int time_x = cx - 32;  /* Center: 8 chars * 8px / 2 = 32 */
+    int time_y = cy + r + 20;
+    draw_string(fb, time_x, time_y, time_str, COLOR_TEXT);
+}
+
+/* =============================================================================
+ * DRAW TIMELINE NOTION VIEW - Right Panel
+ * Margin: X=460
+ * ============================================================================= */
+void draw_timeline_view(struct limine_framebuffer *fb) {
+    /* Header: "TODAY'S CHRONICLE" at Y=220 */
+    draw_string(fb, TIMELINE_MARGIN_X, TIMELINE_START_Y, "TODAY'S CHRONICLE", COLOR_TEXT);
+
+    /* Vertical timeline line connecting all dots */
+    /* Line from Event 1 top to Event 3 bottom */
+    draw_line(fb, EVENT_DOT_X, EVENT_1_Y - 5, EVENT_DOT_X, EVENT_3_Y + 5, COLOR_BORDER);
+
+    /* Event 1: 09:00 AM | Boot HydroOS Kernel */
+    draw_circle_filled(fb, EVENT_DOT_X, EVENT_1_Y, 4, COLOR_DB_BG);
+    draw_string(fb, EVENT_DOT_X + 16, EVENT_1_Y - 4, "09:00 AM | Boot HydroOS Kernel", COLOR_TEXT);
+
+    /* Event 2: 11:30 AM | Compile Dubnium Engine */
+    draw_circle_filled(fb, EVENT_DOT_X, EVENT_2_Y, 4, COLOR_DB_BG);
+    draw_string(fb, EVENT_DOT_X + 16, EVENT_2_Y - 4, "11:30 AM | Compile Dubnium Engine", COLOR_TEXT);
+
+    /* Event 3: 03:00 PM | Refactor Vintage UI with AI */
+    draw_circle_filled(fb, EVENT_DOT_X, EVENT_3_Y, 4, COLOR_DB_BG);
+    draw_string(fb, EVENT_DOT_X + 16, EVENT_3_Y - 4, "03:00 PM | Refactor Vintage UI with AI", COLOR_TEXT);
+
+    /* Additional timeline entries */
+    int event_4_y = 380;
+    draw_line(fb, EVENT_DOT_X, EVENT_3_Y + 5, EVENT_DOT_X, event_4_y - 5, COLOR_BORDER);
+    draw_circle_outline(fb, EVENT_DOT_X, event_4_y, 4, COLOR_BORDER);
+    draw_string(fb, EVENT_DOT_X + 16, event_4_y - 4, "05:00 PM | Kernel Shutdown Sequence", COLOR_TEXT);
+
+    /* Footer time zone info */
+    int footer_y = TITANIUM_WIN_Y + TITANIUM_WIN_H - 30;
+    draw_string_small(fb, TIMELINE_MARGIN_X, footer_y, "TIMEZONE: UTC+7 (HydroOS Standard)", COLOR_TEXT);
+}
+
+/* =============================================================================
+ * MAIN TITANIUM APP RENDER FUNCTION
+ * ============================================================================= */
+void show_titanium_app(struct limine_framebuffer *fb) {
+    /* 1. Draw window frame with retro shadow */
+    draw_titanium_frame(fb);
+
+    /* 2. Draw title bar with element info */
+    draw_titanium_title(fb);
+
+    /* 3. Draw split panel divider */
+    draw_split_divider(fb);
+
+    /* 4. Draw analog clock in left panel */
+    draw_analog_clock(fb);
+
+    /* 5. Draw timeline schedule in right panel */
+    draw_timeline_view(fb);
+}
+
+/* =============================================================================
+ * HELPER MATH FUNCTIONS - Trigonometry for Clock
+ * ============================================================================= */
+
+/* Approximate cosine using Taylor series (reduced precision) */
+static double cos_approx(double x) {
+    /* Normalize x to [-pi, pi] range */
+    while (x > 3.14159) x -= 2.0 * 3.14159;
+    while (x < -3.14159) x += 2.0 * 3.14159;
+
+    double x2 = x * x;
+    double x4 = x2 * x2;
+    double x6 = x4 * x2;
+
+    /* cos(x) ≈ 1 - x²/2! + x⁴/4! - x⁶/6! */
+    return 1.0 - x2/2.0 + x4/24.0 - x6/720.0;
+}
+
+/* Approximate sine using Taylor series */
+static double sin_approx(double x) {
+    /* sin(x) = cos(x - π/2) */
+    return cos_approx(x - 3.14159/2.0);
+}
+
+/* =============================================================================
+ * DRAWING PRIMITIVE HELPERS
+ * ============================================================================= */
+
+/* Draw circle outline (Bresenham-like midpoint algorithm) */
+void draw_circle_outline(struct limine_framebuffer *fb, int cx, int cy, int r, uint32_t color) {
+    int x = r;
+    int y = 0;
+    int err = 1 - r;
+
+    while (x >= y) {
+        draw_pixel(fb, cx + x, cy + y, color);
+        draw_pixel(fb, cx + y, cy + x, color);
+        draw_pixel(fb, cx - y, cy + x, color);
+        draw_pixel(fb, cx - x, cy + y, color);
+        draw_pixel(fb, cx - x, cy - y, color);
+        draw_pixel(fb, cx - y, cy - x, color);
+        draw_pixel(fb, cx + y, cy - x, color);
+        draw_pixel(fb, cx + x, cy - y, color);
+
+        y++;
+        if (err < 0) {
+            err += 2 * y + 1;
+        } else {
+            x--;
+            err += 2 * (y - x) + 1;
+        }
+    }
+}
+
+/* Draw filled circle */
+void draw_circle_filled(struct limine_framebuffer *fb, int cx, int cy, int r, uint32_t color) {
+    for (int y = -r; y <= r; y++) {
+        for (int x = -r; x <= r; x++) {
+            if (x*x + y*y <= r*r) {
+                draw_pixel(fb, cx + x, cy + y, color);
+            }
+        }
+    }
+}
+
+/* Draw thicker line (width > 1) */
+void draw_line_thick(struct limine_framebuffer *fb, int x1, int y1, int x2, int y2, uint32_t color, int thickness) {
+    /* Draw main line */
+    draw_line(fb, x1, y1, x2, y2, color);
+
+    /* Draw parallel lines for thickness */
+    for (int t = 1; t < thickness; t++) {
+        draw_line(fb, x1 + t, y1, x2 + t, y2, color);
+        draw_line(fb, x1 - t, y1, x2 - t, y2, color);
+    }
+}
+
+/* =============================================================================
+ * TIME FUNCTIONS
+ * ============================================================================= */
+
+/* Initialize Titanium Clock with default time */
+void titanium_app_init(void) {
+    current_hour = 10;
+    current_minute = 10;
+    current_second = 0;
+}
+
+/* Update time (tick) */
+void titanium_tick(void) {
+    current_second++;
+    if (current_second >= 60) {
+        current_second = 0;
+        current_minute++;
+        if (current_minute >= 60) {
+            current_minute = 0;
+            current_hour++;
+            if (current_hour >= 24) {
+                current_hour = 0;
+            }
+        }
+    }
+}
+`
   }
 ];
