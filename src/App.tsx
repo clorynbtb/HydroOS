@@ -239,7 +239,20 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0F0F0F] flex items-center justify-center p-4">
       {/* Absolute bounding box for exactly 1024x768 display layout according to specs */}
-      <div className="bg-[#F7F7F5] text-[#37352F] font-sans w-[1024px] h-[768px] flex flex-col overflow-hidden relative border border-[#E9E9E6] shadow-[0_16px_48px_rgba(0,0,0,0.18)] rounded-xl">
+      {/* Mac Classic outer chrome frame — square corners, bevel shadow, dark border */}
+      <div
+        className="text-[#3E2723] font-sans w-[1024px] h-[768px] flex flex-col overflow-hidden relative"
+        style={{
+          background: '#F5EFE6',
+          border: '2px solid #5D4037',
+          boxShadow: `
+            inset 1px 1px 0 #FFFFFF,
+            inset -1px -1px 0 #5D4037,
+            4px 4px 0 #BCAAA4,
+            6px 6px 0 #D7CCC8
+          `,
+        }}
+      >
         
         {/* BOOT MODE */}
         {(osState === 'booting' || osState === 'rebooting') ? (

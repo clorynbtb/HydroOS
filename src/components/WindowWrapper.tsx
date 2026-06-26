@@ -44,53 +44,97 @@ export default function WindowWrapper({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
       onPointerDown={onFocus}
-      style={{ zIndex }}
-      className={`absolute ${width} ${height} bg-[#FFFFFF] border border-[#E9E9E6] rounded-lg shadow-[0_12px_36px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col`}
+      style={{
+        zIndex,
+        /* Mac Classic outer frame: dark brown border + white highlight bevel */
+        boxShadow: `
+          inset 1px 1px 0 #FFFFFF,
+          inset -1px -1px 0 #5D4037,
+          2px 2px 0 #D7CCC8,
+          3px 3px 0 #BCAAA4
+        `,
+      }}
+      className={`absolute ${width} ${height} overflow-hidden flex flex-col border border-[#5D4037]`}
+      // Sharp square corners — Mac Classic has NO rounded corners
     >
-      {/* Window Title Bar */}
-      <div className="window-titlebar h-9 bg-[#F7F7F5] flex items-center px-4 border-b border-[#E9E9E6] select-none cursor-grab active:cursor-grabbing justify-between">
-        <div className="flex items-center gap-2">
-          {/* macOS Red / Yellow / Green window dots but minimalist */}
-          <div className="flex gap-1.5 mr-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              className="w-3 h-3 rounded-full bg-[#EB5757]/15 hover:bg-[#EB5757] flex items-center justify-center text-[7px] text-[#EB5757] hover:text-white border border-[#EB5757]/35 cursor-pointer font-extrabold transition-all"
-            >
-              ×
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMinimize();
-              }}
-              className="w-3 h-3 rounded-full bg-[#F2C94C]/20 hover:bg-[#F2C94C] flex items-center justify-center text-[7px] text-[#D9730D] hover:text-white border border-[#F2C94C]/45 cursor-pointer font-extrabold transition-all"
-            >
-              -
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFocus(); // Maximizing is simplified as focusing
-              }}
-              className="w-3 h-3 rounded-full bg-[#27AE60]/15 hover:bg-[#27AE60] flex items-center justify-center text-[7px] text-[#0F7B5C] hover:text-white border border-[#27AE60]/35 cursor-pointer font-extrabold transition-all"
-            >
-              +
-            </button>
-          </div>
-          <span className="text-[11px] text-[#37352F] font-bold font-sans">
-            {title}
-          </span>
+      {/* Mac Classic Title Bar — striped background with centered title */}
+      <div
+        className="window-titlebar h-6 flex items-center px-2 select-none cursor-grab active:cursor-grabbing justify-between relative"
+        style={{
+          /* Mac System 7 horizontal stripe pattern */
+          background: `repeating-linear-gradient(
+            to bottom,
+            #EFEBE9 0px,
+            #EFEBE9 2px,
+            #D7CCC8 2px,
+            #D7CCC8 3px
+          )`,
+          borderBottom: '1px solid #5D4037',
+        }}
+      >
+        {/* Mac Classic Close Box — square, not circle */}
+        <div className="flex items-center gap-1.5 shrink-0 z-10">
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            title="Close"
+            style={{
+              width: 12,
+              height: 12,
+              background: '#EFEBE9',
+              border: '1px solid #5D4037',
+              boxShadow: 'inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #8D6E63',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            className="text-[7px] font-black text-[#5D4037] hover:bg-[#D7CCC8] transition-colors"
+          >
+            ×
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onMinimize(); }}
+            title="Minimize"
+            style={{
+              width: 12,
+              height: 12,
+              background: '#EFEBE9',
+              border: '1px solid #5D4037',
+              boxShadow: 'inset 1px 1px 0 #FFFFFF, inset -1px -1px 0 #8D6E63',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+            className="text-[7px] font-black text-[#5D4037] hover:bg-[#D7CCC8] transition-colors"
+          >
+            –
+          </button>
         </div>
-        <div className="text-[8px] text-[#9B9A97] uppercase tracking-wider font-mono">
-          HYDROGEN LAYER
+
+        {/* Title centered over stripes */}
+        <span
+          className="absolute inset-0 flex items-center justify-center text-[10px] font-bold font-sans pointer-events-none px-16"
+          style={{ color: '#3E2723', letterSpacing: '0.02em' }}
+        >
+          {title}
+        </span>
+
+        <div className="text-[8px] font-mono shrink-0 z-10" style={{ color: '#8D6E63' }}>
+          [H]
         </div>
       </div>
 
-      {/* Window Content */}
-      <div className="flex-1 overflow-auto max-h-[500px] text-[#37352F]">
+      {/* Window Content — 1px inset border on all sides for depth */}
+      <div
+        className="flex-1 overflow-auto max-h-[500px] text-[#37352F]"
+        style={{
+          background: '#FFFFFF',
+          borderTop: '1px solid #FFFFFF',
+        }}
+      >
         {children}
       </div>
     </motion.div>
