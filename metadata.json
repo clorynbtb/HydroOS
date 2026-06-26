@@ -1,0 +1,6 @@
+{
+  "name": "HydroOS",
+  "description": "An interactive macOS-style simulator for HydroOS, a 64-bit operating system featuring Limine Bootloader, Clang toolchain, and integrated Dubnium Docker container manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
