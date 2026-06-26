@@ -1,7 +1,7 @@
 /**
  * @file kernel.c
  * @brief HydroOS Kernel Core (Hydrogen Core - H) - Vintage Editorial & Notion Minimalist Theme Edition
- * 
+ *
  * Architecture: 64-bit Freestanding Kernel (x86_64-none-elf)
  * Bootloader: Limine Protocol v5.x
  * Design System: Vintage Minimalist (Warm Manuscript Cream, Espresso Brown, Ash-Brown & Ivory Panels)
@@ -46,25 +46,24 @@ static volatile struct limine_framebuffer_request fb_request = {
     .revision = 0
 };
 
-/* 1. BẢNG MÀU VINTAGE MINIMALIST CHUẨN GU THẨM MỸ (ARGB) */
-#define COLOR_BG                 0xFFF5EFE6  /* Nền kem ấm hoài cổ, bản thảo giấy cũ */
-#define COLOR_TEXT               0xFF3E2723  /* Chữ nâu Espresso đậm tinh tế */
-#define COLOR_BORDER             0xFFD7CCC8  /* Viền nâu tro mảnh dẻ 1px */
-#define COLOR_PANEL              0xFFFFFFFF  /* Trắng ngà nổi bật cho Menu & Dock */
-
-#define COLOR_HE_BG              0xFFF5F5F5  /* Trắng sữa tĩnh lặng cho [HE] */
-#define COLOR_LI_BG              0xFFEFEBE9  /* Nâu Latte rất nhạt hoài niệm cho [LI] */
-#define COLOR_DB_BG              0xFFE0D4C3  /* Nâu gỗ sáng/Cát cho [DB] */
+/* 2. BẢNG MÀU VINTAGE MINIMALIST CHUẨN GU THẨM MỸ (ARGB) */
+#define COLOR_DESKTOP  0xFFF5EFE6  /* Nền kem ấm toàn màn hình */
+#define COLOR_TEXT     0xFF3E2723  /* Chữ nâu Espresso đậm */
+#define COLOR_BORDER   0xFFD7CCC8  /* Đường viền nâu tro mảnh 1px */
+#define COLOR_WHITE    0xFFFFFFFF  /* Trắng ngà cho Menu và Dock */
+#define COLOR_HE_BG    0xFFF9F6F0  /* Trắng sữa nhạt cho khối [HE] */
+#define COLOR_LI_BG    0xFFEFEBE9  /* Nữ Latte nhạt cho khối [LI] */
+#define COLOR_DB_BG    0xFFE0D4C3  /* Nâu gỗ sáng cho khối [DB] */
 
 /* Các hằng số tương thích ngược để giữ đồng bộ hệ thống */
-#define COLOR_BACKGROUND         COLOR_BG
+#define COLOR_BACKGROUND         COLOR_DESKTOP
 #define COLOR_HE_TEXT            COLOR_TEXT
 #define COLOR_LI_TEXT            COLOR_TEXT
 #define COLOR_DB_TEXT            COLOR_TEXT
-#define COLOR_MENU_BAR           COLOR_PANEL
+#define COLOR_MENU_BAR           COLOR_WHITE
 
-#define NOTION_COLOR_BG          COLOR_BG
-#define NOTION_COLOR_CANVAS      COLOR_BG
+#define NOTION_COLOR_BG          COLOR_DESKTOP
+#define NOTION_COLOR_CANVAS      COLOR_DESKTOP
 #define NOTION_COLOR_TEXT        COLOR_TEXT
 #define NOTION_COLOR_BORDER      COLOR_BORDER
 #define NOTION_COLOR_TEXT_MUTED  0xFF8D6E63  /* Nâu trung tính mờ dịu mắt */
@@ -201,7 +200,7 @@ void draw_pixel(int x, int y, uint32_t color) {
         return;
     }
     if (g_fb_address == NULL) return;
-    
+
     size_t index = y * (g_fb_pitch / 4) + x;
     g_fb_address[index] = color;
 }
@@ -256,7 +255,7 @@ void draw_rect_outline(int x, int y, int w, int h, uint32_t border_color, uint32
 void draw_char(int x, int y, char c, uint32_t color) {
     uint8_t glyph_idx = (uint8_t)c;
     if (glyph_idx >= 128) glyph_idx = '?';
-    
+
     for (int row = 0; row < 8; row++) {
         uint8_t data = font_8x8[glyph_idx][row];
         for (int col = 0; col < 8; col++) {
@@ -288,139 +287,78 @@ void draw_vector_string(int x, int y, const char *str, uint32_t color) {
 
 /* Màn hình khởi động hoài cổ tối giản (Splash Screen) */
 void hydro_splash_screen(void) {
-    /* Đổ nền màu giấy cũ hoài cổ COLOR_BG */
+    /* Tô toàn màn hình bằng COLOR_WHITE */
     for (int y = 0; y < (int)g_fb_height; y++) {
         for (int x = 0; x < (int)g_fb_width; x++) {
-            draw_pixel(x, y, COLOR_BG);
+            draw_pixel(x, y, COLOR_WHITE);
         }
     }
 
-    int cx = (int)g_fb_width / 2;
-    int cy = (int)g_fb_height / 2;
+    /* Logo chữ "H" nét mảnh ở chính giữa (X=512, Y=350), rộng 30px, cao 50px */
+    /* Trụ dọc trái: (497, 325) -> (497, 375) */
+    draw_line(497, 325, 497, 375, COLOR_TEXT);
+    /* Trụ dọc phải: (527, 325) -> (527, 375) */
+    draw_line(527, 325, 527, 375, COLOR_TEXT);
+    /* Thanh ngang giữa: (497, 350) -> (527, 350) */
+    draw_line(497, 350, 527, 350, COLOR_TEXT);
 
-    /* Vẽ chữ "HYDROOS" Monospace lớn sắc nét ở giữa màn hình */
-    int text_x = cx - 28;
-    int text_y = cy - 4;
-    draw_string(text_x, text_y, "HYDROOS", COLOR_TEXT);
+    /* Khung Loading bar rỗng: X=412, Y=420, Rộng=200, Cao=4, viền COLOR_BORDER */
+    draw_line(412, 420, 612, 420, COLOR_BORDER);
+    draw_line(412, 423, 612, 423, COLOR_BORDER);
+    draw_line(412, 420, 412, 423, COLOR_BORDER);
+    draw_line(612, 420, 612, 423, COLOR_BORDER);
 
-    /* Vẽ đường Loading bar chạy dài ở dưới */
-    int bar_w = 200;
-    int bar_x = cx - bar_w / 2;
-    int bar_y = cy + 25;
-
-    /* Trục nền Loading mảnh 1px màu nâu tro */
-    draw_line(bar_x, bar_y, bar_x + bar_w, bar_y, COLOR_BORDER);
-
-    /* Vòng lặp delay chạy dài Loading bar bằng màu Espresso sẫm */
+    /* Vòng lặp delay vẽ đầy thanh Loading bar bằng COLOR_TEXT */
     for (int pct = 0; pct <= 100; pct += 4) {
-        int fill_w = (bar_w * pct) / 100;
-        draw_line(bar_x, bar_y, bar_x + fill_w, bar_y, COLOR_TEXT);
-        
-        /* Hiển thị số phần trăm mờ nhã nhặn màu nâu nhạt ở dưới */
-        int pct_x = cx - 12;
-        int pct_y = bar_y + 12;
-        char pct_str[5] = "  0%";
-        pct_str[0] = '0' + (pct / 100);
-        pct_str[1] = '0' + ((pct % 100) / 10);
-        pct_str[2] = '0' + (pct % 10);
-        if (pct_str[0] == '0') {
-            pct_str[0] = ' ';
-            if (pct_str[1] == '0') {
-                pct_str[1] = ' ';
-            }
+        int fill_w = (200 * pct) / 100;
+        if (fill_w > 0) {
+            draw_rect_filled(412, 421, fill_w, 2, COLOR_TEXT);
         }
-        draw_string(pct_x, pct_y, pct_str, NOTION_COLOR_TEXT_MUTED);
-        
-        delay(35); /* Độ trễ chân thực tạo cảm giác hoài cổ */
+        delay(35);
     }
-    delay(300); /* Chờ một nhịp trước khi nạp vào Desktop */
+    delay(300);
 }
 
 /* Giao diện Desktop Vintage Minimalist của HydroOS */
 void hydro_notion_desktop(void) {
-    /* Đổ toàn bộ nền màn hình màu giấy cũ kem ấm COLOR_BG */
-    draw_rect_filled(0, 0, g_fb_width, g_fb_height, COLOR_BG);
+    /* Đổ toàn bộ nền màn hình màu kem ấm COLOR_DESKTOP */
+    draw_rect_filled(0, 0, g_fb_width, g_fb_height, COLOR_DESKTOP);
 
-    /* 1. Thanh Top Menu màu trắng ngà COLOR_PANEL, sát cạnh trên */
-    draw_rect_filled(0, 0, g_fb_width, 28, COLOR_PANEL);
-    /* Đường viền dưới mảnh 1px màu nâu tro COLOR_BORDER */
-    draw_line(0, 27, g_fb_width, 27, COLOR_BORDER);
+    /* 3. CHI TIẾT THANH TOP MENU BAR (Sát cạnh trên) */
+    /* Gốc (0,0), Rộng 1024, Cao 32, tô COLOR_WHITE */
+    draw_rect_filled(0, 0, 1024, 32, COLOR_WHITE);
+    /* Viền cạnh dưới tại Y=31, từ X=0 đến 1024, màu COLOR_BORDER */
+    draw_line(0, 31, 1024, 31, COLOR_BORDER);
+    /* Nội dung chữ "HYDROOS  |  V.0.1" tại (20, 11), màu COLOR_TEXT */
+    draw_string(20, 11, "HYDROOS  |  V.0.1", COLOR_TEXT);
 
-    /* Ghi chữ bên góc trái Menu */
-    draw_string(16, 10, "HYDROOS  |  V.0.1", COLOR_TEXT);
-    draw_string(180, 10, "File", NOTION_COLOR_TEXT_MUTED);
-    draw_string(230, 10, "Docker", COLOR_TEXT);
-    draw_string(290, 10, "Status", NOTION_COLOR_TEXT_MUTED);
+    /* 4. CHI TIẾT THANH DOCK PHẲNG (Nằm ngang, chính giữa sát cạnh dưới) */
+    /* Tọa độ: X=362, Y=680, Rộng=300, Cao=56. Tô COLOR_WHITE. */
+    draw_rect_filled(362, 680, 300, 56, COLOR_WHITE);
+    /* Viền khung 1px bao quanh bằng COLOR_BORDER */
+    draw_rect_outline(362, 680, 300, 56, COLOR_BORDER, COLOR_WHITE);
+    /* Hiệu ứng Vintage Elevation (Hard Shadow 2D):
+       Đường thẳng COLOR_BORDER ở cạnh dưới (Y=737) và cạnh phải (X=663) dịch ra 1px */
+    /* Cạnh dưới shadow: Y=737, từ X=362 đến X=662 (cạnh phải của dock là 362+300=662, shadow ở 663 nên đoạn ngang đến 663) */
+    draw_line(362, 737, 663, 737, COLOR_BORDER);
+    /* Cạnh phải shadow: X=663, từ Y=680 đến Y=736 (cạnh dưới của dock là 680+56=736, shadow ở 737 nên đoạn dọc đến 737) */
+    draw_line(663, 680, 663, 737, COLOR_BORDER);
 
-    /* Các chỉ số hệ thống mộc mạc bên góc phải */
-    draw_string(g_fb_width - 250, 10, "[CLANG x86_64]", NOTION_COLOR_TEXT_MUTED);
-    draw_string(g_fb_width - 120, 10, "15% CPU", COLOR_TEXT);
+    /* 5. CHI TIẾT 3 Ô KHỐI ỨNG DỤNG TRÊN THANH DOCK */
+    /* Ô [HE] (Helium): (374, 688), Rộng=76, Cao=40, tô COLOR_HE_BG, viền COLOR_BORDER */
+    draw_rect_outline(374, 688, 76, 40, COLOR_BORDER, COLOR_HE_BG);
+    /* Chữ "HE" căn giữa ô: font 8x8, 2 ký tự = 16px. X = 374 + (76-16)/2 = 404. Y = 688 + (40-8)/2 = 704. */
+    draw_string(404, 704, "HE", COLOR_TEXT);
 
-    /* 2. Cửa sổ Dubnium Docker Manager mẫu ngay giữa Desktop */
-    int win_w = 640;
-    int win_h = 360;
-    int win_x = (g_fb_width - win_w) / 2;
-    int win_y = (g_fb_height - win_h) / 2 - 20;
+    /* Ô [LI] (Lithium): (462, 688), Rộng=76, Cao=40, tô COLOR_LI_BG, viền COLOR_BORDER */
+    draw_rect_outline(462, 688, 76, 40, COLOR_BORDER, COLOR_LI_BG);
+    /* Chữ "LI" căn giữa ô: X = 462 + (76-16)/2 = 492. Y = 704. */
+    draw_string(492, 704, "LI", COLOR_TEXT);
 
-    /* Cửa sổ phẳng màu trắng ngà, viền nâu tro 1px */
-    draw_rect_outline(win_x, win_y, win_w, win_h, COLOR_BORDER, COLOR_PANEL);
-    
-    /* Thanh tiêu đề cửa sổ phẳng, viền ngăn cách dưới */
-    draw_rect_filled(win_x + 1, win_y + 1, win_w - 2, 30, COLOR_BG);
-    draw_line(win_x, win_y + 31, win_x + win_w - 1, win_y + 31, COLOR_BORDER);
-    draw_string(win_x + 16, win_y + 12, "Dubnium Docker Manager v1.0.4 - [db.c]", COLOR_TEXT);
-
-    /* Thống kê container dạng bảng biểu tối giản trong cửa sổ */
-    int content_y = win_y + 50;
-    draw_string(win_x + 20, content_y, "CONTAINER ID   IMAGE           STATUS        PORT", NOTION_COLOR_TEXT_MUTED);
-    draw_line(win_x + 20, content_y + 12, win_x + win_w - 20, content_y + 12, COLOR_BORDER);
-
-    draw_string(win_x + 20, content_y + 24, "db-7f31a       nginx-stable    Active        :80", COLOR_TEXT);
-    draw_string(win_x + 20, content_y + 40, "he-92k1l       alpine-linux    Active        :none", COLOR_TEXT);
-    draw_string(win_x + 20, content_y + 56, "li-00x9z       postgres-db     Paused        :5432", NOTION_COLOR_TEXT_MUTED);
-
-    /* Hộp lệnh log terminal giả lập bên dưới cửa sổ (Nền Latte nhẹ) */
-    int term_y = win_y + 160;
-    draw_rect_outline(win_x + 20, term_y, win_w - 40, 160, COLOR_BORDER, COLOR_LI_BG);
-
-    draw_string(win_x + 32, term_y + 16, "[kernel.c] Boot sequence completed.", NOTION_COLOR_TEXT_MUTED);
-    draw_string(win_x + 32, term_y + 32, "[oxygen.c] Editorial theme loaded: Warm Cream & Espresso", NOTION_COLOR_TEXT_MUTED);
-    draw_string(win_x + 32, term_y + 48, "[db.c] Connected to virtual Docker socket layer", COLOR_TEXT);
-    draw_string(win_x + 32, term_y + 64, "hydro@vintage-os:~$ docker ps", COLOR_TEXT);
-
-    /* 3. Thanh DOCK phẳng, vuông vắn tinh tế, màu trắng ngà COLOR_PANEL ở cạnh dưới */
-    int dock_w = 280;
-    int dock_h = 80;
-    int dock_x = (g_fb_width - dock_w) / 2;
-    int dock_y = g_fb_height - dock_h - 20;
-
-    /* Khung Dock phẳng viền nâu tro */
-    draw_rect_outline(dock_x, dock_y, dock_w, dock_h, COLOR_BORDER, COLOR_PANEL);
-
-    /* 3 Ô vuông dạng thẻ (Card đứng) xếp ngang inside Dock: [HE], [LI], [DB] */
-    int card_w = 54;
-    int card_h = 54;
-    int gap = 16;
-    int start_card_x = dock_x + (dock_w - (3 * card_w + 2 * gap)) / 2;
-    int card_y = dock_y + (dock_h - card_h) / 2;
-
-    /* Ô 1: [HE] - Khối phẳng màu trắng sữa COLOR_HE_BG viền mảnh */
-    int card1_x = start_card_x;
-    draw_rect_outline(card1_x, card_y, card_w, card_h, COLOR_BORDER, COLOR_HE_BG);
-    draw_string(card1_x + 11, card_y + 23, "[HE]", COLOR_TEXT);
-
-    /* Ô 2: [LI] - Khối phẳng màu nâu Latte nhạt COLOR_LI_BG viền mảnh */
-    int card2_x = card1_x + card_w + gap;
-    draw_rect_outline(card2_x, card_y, card_w, card_h, COLOR_BORDER, COLOR_LI_BG);
-    draw_string(card2_x + 11, card_y + 23, "[LI]", COLOR_TEXT);
-
-    /* Ô 3: [DB] - Khối phẳng màu nâu gỗ sáng/cát COLOR_DB_BG viền mảnh */
-    int card3_x = card2_x + card_w + gap;
-    draw_rect_outline(card3_x, card_y, card_w, card_h, COLOR_BORDER, COLOR_DB_BG);
-    draw_string(card3_x + 11, card_y + 23, "[DB]", COLOR_TEXT);
-
-    /* Chỉ báo hoạt động chấm nâu gỗ mộc mạc bên dưới ô DB */
-    draw_rect_filled(card3_x + card_w / 2 - 3, dock_y + dock_h - 7, 6, 2, COLOR_TEXT);
+    /* Ô [DB] (Dubnium/Docker): (550, 688), Rộng=76, Cao=40, tô COLOR_DB_BG, viền COLOR_BORDER */
+    draw_rect_outline(550, 688, 76, 40, COLOR_BORDER, COLOR_DB_BG);
+    /* Chữ "DB" căn giữa ô: 2 ký tự = 16px. X = 550 + (76-16)/2 = 580. Y = 704. */
+    draw_string(580, 704, "DB", COLOR_TEXT);
 }
 
 /* 5. Hàm kernel_main nhận địa chỉ framebuffer trực tiếp từ Limine hoặc đối số */
@@ -428,7 +366,7 @@ void kernel_main(uint32_t *framebuffer_addr) {
     if (framebuffer_addr != NULL) {
         g_fb_address = framebuffer_addr;
     }
-    
+
     /* Chạy hoạt cảnh khởi động */
     hydro_splash_screen();
 
