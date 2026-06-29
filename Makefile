@@ -37,7 +37,8 @@ CFLAGS  := -target x86_64-none-elf \
            -fno-omit-frame-pointer \
            -fno-builtin \
            -nostdinc \
-           -I.
+           -I. \
+           -isystem /usr/lib/llvm-18/lib/clang/18/include
 
 # --- Cac co lien ket (linker flags) ---
 # -T linker.ld               : Su dung script lien ket tuy chinh (dinh dia chi 0x100000)
@@ -50,8 +51,8 @@ LDFLAGS := -T linker.ld \
            -z max-page-size=0x1000
 
 # --- Cac file nguon va dich ---
-SRC      := kernel.c
-OBJ      := kernel.o
+SRC      := kernel.c db.c src/drivers/graphics.c src/apps/office_elements.c src/apps/utility_elements.c src/apps/media_elements.c src/apps/extended_elements.c src/apps/social_elements.c src/apps/system_elements.c
+OBJ      := kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o
 KERNEL   := kernel.elf
 ISO      := hydroos.iso
 
@@ -81,16 +82,56 @@ all: $(KERNEL)
 
 # --- Bien dich file .c thanh file object .o ---
 # Buoc 1: Clang bien dich kernel.c -> kernel.o (freestanding, khong libc)
-$(OBJ): $(SRC)
-	@echo "[*] Dang bien dich $(SRC) -> $(OBJ)..."
-	$(CC) $(CFLAGS) -c $< -o $@
-	@echo "[OK] Da bien dich xong $(OBJ)"
+kernel.o: kernel.c
+	@echo "[*] Dang bien dich kernel.c -> kernel.o..."
+	$(CC) $(CFLAGS) -c kernel.c -o kernel.o
+	@echo "[OK] Da bien dich xong kernel.o"
+
+db.o: db.c
+	@echo "[*] Dang bien dich db.c -> db.o..."
+	$(CC) $(CFLAGS) -c db.c -o db.o
+	@echo "[OK] Da bien dich xong db.o"
+
+graphics.o: src/drivers/graphics.c
+	@echo "[*] Dang bien dich src/drivers/graphics.c -> graphics.o..."
+	$(CC) $(CFLAGS) -c src/drivers/graphics.c -o graphics.o
+	@echo "[OK] Da bien dich xong graphics.o"
+
+office_elements.o: src/apps/office_elements.c
+	@echo "[*] Dang bien dich src/apps/office_elements.c -> office_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/office_elements.c -o office_elements.o
+	@echo "[OK] Da bien dich xong office_elements.o"
+
+utility_elements.o: src/apps/utility_elements.c
+	@echo "[*] Dang bien dich src/apps/utility_elements.c -> utility_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/utility_elements.c -o utility_elements.o
+	@echo "[OK] Da bien dich xong utility_elements.o"
+
+media_elements.o: src/apps/media_elements.c
+	@echo "[*] Dang bien dich src/apps/media_elements.c -> media_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/media_elements.c -o media_elements.o
+	@echo "[OK] Da bien dich xong media_elements.o"
+
+extended_elements.o: src/apps/extended_elements.c
+	@echo "[*] Dang bien dich src/apps/extended_elements.c -> extended_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/extended_elements.c -o extended_elements.o
+	@echo "[OK] Da bien dich xong extended_elements.o"
+
+social_elements.o: src/apps/social_elements.c
+	@echo "[*] Dang bien dich src/apps/social_elements.c -> social_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/social_elements.c -o social_elements.o
+	@echo "[OK] Da bien dich xong social_elements.o"
+
+system_elements.o: src/apps/system_elements.c
+	@echo "[*] Dang bien dich src/apps/system_elements.c -> system_elements.o..."
+	$(CC) $(CFLAGS) -c src/apps/system_elements.c -o system_elements.o
+	@echo "[OK] Da bien dich xong system_elements.o"
 
 # --- Lien ket file object thanh kernel ELF ---
 # Buoc 2: ld.lld lien ket kernel.o -> kernel.elf (dung linker script)
-$(KERNEL): $(OBJ) linker.ld
-	@echo "[*] Dang lien ket $(OBJ) -> $(KERNEL)..."
-	$(LD) $(LDFLAGS) -o $@ $(OBJ)
+$(KERNEL): kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o linker.ld
+	@echo "[*] Dang lien ket kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o -> $(KERNEL)..."
+	$(LD) $(LDFLAGS) -o $@ kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o
 	@echo "[OK] Kernel ELF da san sang: $@"
 	@echo "    -> Kich thuoc: $$(ls -lh $@ | awk '{print $$5}')"
 

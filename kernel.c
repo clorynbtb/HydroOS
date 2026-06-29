@@ -9,6 +9,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "src/include/colors.h"
+#include "src/include/graphics.h"
+#include "src/include/elements.h"
 
 /* Specifying framebuffer structure according to the Limine specification */
 struct limine_framebuffer {
@@ -46,32 +49,13 @@ static volatile struct limine_framebuffer_request fb_request = {
     .revision = 0
 };
 
-/* =============================================================================
- * BẢNG MÀU MAC CLASSIC × NOTION VINTAGE (ARGB format)
- * Tone: Nâu Espresso · Kem ấm · Trắng ngà · Mac System 7
- * ============================================================================= */
-#define COLOR_DESKTOP        0xFFF5EFE6  /* Nền kem ấm toàn màn hình (Desktop) */
-#define COLOR_TEXT           0xFF3E2723  /* Chữ nâu Espresso đậm */
-#define COLOR_BORDER         0xFFD7CCC8  /* Viền nâu tro mảnh 1px */
-#define COLOR_WHITE          0xFFFFFFFF  /* Trắng ngà */
-#define COLOR_HE_BG          0xFFF9F6F0  /* Trắng sữa nhạt [HE] */
-#define COLOR_LI_BG          0xFFEFEBE9  /* Nâu Latte nhạt [LI] */
-#define COLOR_DB_BG          0xFFE0D4C3  /* Nâu gỗ sáng [DB] */
-
-/* Mac Classic bevel palette */
-#define COLOR_BEVEL_LIGHT    0xFFFFFFFF  /* Cạnh trên/trái: trắng tinh (highlight ánh sáng) */
-#define COLOR_BEVEL_DARK     0xFF5D4037  /* Cạnh dưới/phải: nâu sẫm (bóng đổ dày) */
-#define COLOR_BEVEL_MID      0xFF8D6E63  /* Nâu trung tính (viền chữ muted) */
-#define COLOR_TITLE_STRIPE   0xFFD7CCC8  /* Đường sọc tiêu đề Mac OS 7 */
-#define COLOR_MENU_BAR       COLOR_WHITE
-
 /* Aliases tương thích ngược */
 #define COLOR_BACKGROUND     COLOR_DESKTOP
 #define COLOR_TEXT_MAIN      COLOR_TEXT
 #define NOTION_COLOR_BG      COLOR_DESKTOP
 #define NOTION_COLOR_TEXT    COLOR_TEXT
 #define NOTION_COLOR_BORDER  COLOR_BORDER
-#define NOTION_COLOR_TEXT_MUTED 0xFF8D6E63
+#define NOTION_COLOR_TEXT_MUTED COLOR_BEVEL_MID
 
 /* Biến con trỏ framebuffer toàn cục nhận diện từ Limine */
 static uint32_t *g_fb_address = NULL;
@@ -80,19 +64,26 @@ static uint64_t g_fb_height = 768;
 static uint64_t g_fb_pitch = 4096;
 
 /* Khai báo nguyên mẫu các hàm đồ họa cơ bản */
-void draw_pixel(int x, int y, uint32_t color);
 void draw_line(int x1, int y1, int x2, int y2, uint32_t color);
-void draw_rect_filled(int x, int y, int w, int h, uint32_t color);
 void draw_rect_outline(int x, int y, int w, int h, uint32_t border_color, uint32_t bg_color);
 void draw_char(int x, int y, char c, uint32_t color);
 void draw_string(int x, int y, const char *str, uint32_t color);
 void delay(uint64_t count);
 
 /* Mac Classic bevel primitives */
-void draw_retro_button(int x, int y, int w, int h, uint32_t bg_color);
 void draw_retro_button_pressed(int x, int y, int w, int h, uint32_t bg_color);
 void draw_mac_titlebar(int x, int y, int w, int h, const char *title);
 void draw_mac_close_box(int x, int y);
+void draw_classic_app_window(int x, int y, int w, int h, const char *title, uint32_t body_color);
+
+/* Dubnium Docker interface */
+void draw_classic_docker_manager(void);
+void launch_docker_element(int index);
+
+/* Element app launchers */
+void show_silicon_settings_app(void);
+void show_moscovium_task_app(void);
+void show_iron_explorer_app(void);
 
 /* 3. BỘ FONT CHỮ PIXEL-ART TỐI GIẢN SẮC NÉT (Monospace 8x8) */
 static const uint8_t font_8x8[128][8] = {
@@ -202,17 +193,6 @@ void delay(uint64_t count) {
 
 /* 2. HÀM ĐỒ HỌA GỐC (Xử lý vùng nhớ framebuffer đồ họa thuần C) */
 
-/* Tô màu pixel tại tọa độ màn hình */
-void draw_pixel(int x, int y, uint32_t color) {
-    if (x < 0 || x >= (int)g_fb_width || y < 0 || y >= (int)g_fb_height) {
-        return;
-    }
-    if (g_fb_address == NULL) return;
-
-    size_t index = y * (g_fb_pitch / 4) + x;
-    g_fb_address[index] = color;
-}
-
 /* Vẽ đường thẳng mảnh 1px bằng thuật toán Bresenham */
 void draw_line(int x1, int y1, int x2, int y2, uint32_t color) {
     int dx = (x2 - x1 >= 0) ? (x2 - x1) : (x1 - x2);
@@ -236,18 +216,9 @@ void draw_line(int x1, int y1, int x2, int y2, uint32_t color) {
     }
 }
 
-/* Vẽ khối hình chữ nhật đặc màu sắc bất kỳ */
-void draw_rect_filled(int x, int y, int w, int h, uint32_t color) {
-    for (int py = y; py < y + h; py++) {
-        for (int px = x; px < x + w; px++) {
-            draw_pixel(px, py, color);
-        }
-    }
-}
-
 /* Tương thích ngược */
 void draw_rect(int x, int y, int w, int h, uint32_t color) {
-    draw_rect_filled(x, y, w, h, color);
+    draw_pixel(x, y, color);
 }
 
 /* Vẽ khối hình chữ nhật có đường viền mảnh 1px */
@@ -297,41 +268,20 @@ void draw_vector_string(int x, int y, const char *str, uint32_t color) {
  * ============================================================================= */
 
 /**
- * draw_retro_button - Vẽ khối nút bấm cơ học 3D nổi kiểu Mac Classic
- *
- * Cấu trúc bevel 4 lớp:
- *   - Lớp 0 (ngoài cùng): Viền nâu tro COLOR_BORDER bao quanh
- *   - Lớp 1 (highlight):  Cạnh trên + trái = TRẮNG TINH (ánh sáng chiếu vào)
- *   - Lớp 2 (shadow):     Cạnh dưới + phải = NÂU SẪM (bóng đổ vật lý)
- *   - Lớp 3 (fill):       Lòng khối màu bg_color
- *
- * Kết quả: Khối UI nổi lên 3D như phím bấm cơ học trên máy Mac thập niên 90.
- */
-void draw_retro_button(int x, int y, int w, int h, uint32_t bg_color) {
-    /* Lớp 0: Viền ngoài cùng COLOR_BORDER */
-    draw_rect_outline(x, y, w, h, COLOR_BORDER, bg_color);
-
-    /* Lớp 1: Highlight – cạnh trên và cạnh trái = TRẮNG TINH */
-    draw_line(x + 1, y + 1, x + w - 2, y + 1, COLOR_BEVEL_LIGHT); /* Trên */
-    draw_line(x + 1, y + 1, x + 1, y + h - 2, COLOR_BEVEL_LIGHT); /* Trái */
-
-    /* Lớp 2: Shadow – cạnh dưới và cạnh phải = NÂU SẪM */
-    draw_line(x + 1, y + h - 2, x + w - 2, y + h - 2, COLOR_BEVEL_DARK); /* Dưới */
-    draw_line(x + w - 2, y + 1, x + w - 2, y + h - 2, COLOR_BEVEL_DARK); /* Phải */
-}
-
-/**
  * draw_retro_button_pressed - Trạng thái nút lún xuống (pressed/active)
  * Đảo ngược highlight ↔ shadow để tạo cảm giác lún vào.
  */
 void draw_retro_button_pressed(int x, int y, int w, int h, uint32_t bg_color) {
-    draw_rect_outline(x, y, w, h, COLOR_BORDER, bg_color);
+    draw_rect_filled(x, y, w, h, bg_color);
 
-    /* Shadow trên/trái (lún vào) */
+    draw_line(x, y, x + w - 1, y, COLOR_BEVEL_DARK);
+    draw_line(x, y + h - 1, x + w - 1, y + h - 1, COLOR_BORDER);
+    draw_line(x, y, x, y + h - 1, COLOR_BEVEL_DARK);
+    draw_line(x + w - 1, y, x + w - 1, y + h - 1, COLOR_BORDER);
+
     draw_line(x + 1, y + 1, x + w - 2, y + 1, COLOR_BEVEL_DARK);
     draw_line(x + 1, y + 1, x + 1, y + h - 2, COLOR_BEVEL_DARK);
 
-    /* Highlight dưới/phải */
     draw_line(x + 1, y + h - 2, x + w - 2, y + h - 2, COLOR_BEVEL_LIGHT);
     draw_line(x + w - 2, y + 1, x + w - 2, y + h - 2, COLOR_BEVEL_LIGHT);
 }
@@ -346,40 +296,43 @@ void draw_mac_close_box(int x, int y) {
 
 /**
  * draw_mac_titlebar - Thanh tiêu đề cửa sổ kiểu Mac System 7
- *
- * Cấu trúc:
- *   - Nền: COLOR_LI_BG (Kem sẫm 0xFFEFEBE9)
- *   - HỌA TIẾT SỌC MAC OS: 4 đường ngang mảnh COLOR_TITLE_STRIPE
- *     chạy song song tại Y+6, Y+9, Y+12, Y+15 (khoảng cách 3px)
- *   - NÚT CLOSE BOX: Góc trái tại (x+6, y+6), vuông 12×12px
- *   - Chữ tiêu đề: Căn giữa thanh, màu COLOR_TEXT, đè lên sọc
- *   - Viền dưới: 1px COLOR_BEVEL_DARK
  */
 void draw_mac_titlebar(int x, int y, int w, int h, const char *title) {
-    /* Nền thanh tiêu đề */
     draw_rect_filled(x, y, w, h, COLOR_LI_BG);
 
-    /* Họa tiết sọc ngang Mac OS 7 — 4 đường kẻ song song */
-    draw_line(x + 26, y + 5, x + w - 8, y + 5, COLOR_TITLE_STRIPE);
-    draw_line(x + 26, y + 8, x + w - 8, y + 8, COLOR_TITLE_STRIPE);
-    draw_line(x + 26, y + 11, x + w - 8, y + 11, COLOR_TITLE_STRIPE);
-    draw_line(x + 26, y + 14, x + w - 8, y + 14, COLOR_TITLE_STRIPE);
+    for (int stripe = 0; stripe < 4; stripe++) {
+        int sy = y + 5 + stripe * 3;
+        draw_line(x + 26, sy, x + w - 8, sy, COLOR_TITLE_STRIPE);
+    }
 
-    /* Close Box: góc trái (x+6, y+6) */
     draw_mac_close_box(x + 6, y + 6);
 
-    /* Chữ tiêu đề căn giữa, đè lên sọc */
     int title_len = 0;
     while (title[title_len]) title_len++;
     int title_px = title_len * 8;
     int title_x = x + (w - title_px) / 2;
     int title_y = y + (h - 8) / 2;
-    /* Đệm nền trắng nhỏ sau chữ để dễ đọc trên sọc */
     draw_rect_filled(title_x - 2, title_y - 1, title_px + 4, 10, COLOR_LI_BG);
     draw_string(title_x, title_y, title, COLOR_TEXT);
 
-    /* Viền dưới thanh tiêu đề */
     draw_line(x, y + h - 1, x + w - 1, y + h - 1, COLOR_BEVEL_DARK);
+}
+
+/**
+ * draw_classic_app_window - Cửa sổ ứng dụng kiểu Mac Classic với titlebar 24px
+ */
+void draw_classic_app_window(int x, int y, int w, int h, const char *title, uint32_t body_color) {
+    draw_retro_button(x, y, w, h, COLOR_WHITE);
+    draw_mac_titlebar(x + 2, y + 2, w - 4, 24, title);
+
+    draw_rect_filled(x + 2, y + 27, w - 4, h - 29, body_color);
+    draw_line(x + 2, y + 27, x + w - 3, y + 27, COLOR_BEVEL_DARK);
+
+    draw_retro_button(x + 16, y + 42, 72, 24, COLOR_WHITE);
+    draw_string(x + 30, y + 49, "Open", COLOR_TEXT);
+
+    draw_retro_button(x + 112, y + 42, 72, 24, COLOR_LI_BG);
+    draw_string(x + 130, y + 49, "Info", COLOR_TEXT);
 }
 
 /* =============================================================================
@@ -441,62 +394,62 @@ void hydro_splash_screen(void) {
  *   - Dock Control Tray (trung tâm, Y=700): Khay nổi retro bevel + 3 phím bấm 3D
  */
 void hydro_notion_desktop(void) {
-    /* Nền Desktop kem ấm */
     draw_rect_filled(0, 0, g_fb_width, g_fb_height, COLOR_DESKTOP);
 
-    /* === TOP MENU BAR (Y=0, H=24) === */
     draw_rect_filled(0, 0, g_fb_width, 24, COLOR_WHITE);
-
-    /* Viền dưới menu bar: 1px COLOR_BEVEL_DARK */
     draw_line(0, 23, g_fb_width, 23, COLOR_BEVEL_DARK);
-    /* Inner highlight (bevel effect on menu bar bottom) */
     draw_line(0, 24, g_fb_width, 24, COLOR_BEVEL_LIGHT);
 
-    /* Logo [H] element — hình chữ nhật 22×18px bevel, thay thế logo Táo Khuyết */
     draw_retro_button(8, 3, 22, 18, COLOR_LI_BG);
     draw_string(11, 7, "H", COLOR_TEXT);
 
-    /* Menu items: HydroOS | File | Edit | Docker */
     draw_string(38, 8, "HydroOS", COLOR_TEXT);
     draw_string(108, 8, "File", COLOR_BEVEL_MID);
     draw_string(148, 8, "Edit", COLOR_BEVEL_MID);
     draw_string(188, 8, "Docker", COLOR_TEXT);
     draw_string(248, 8, "Window", COLOR_BEVEL_MID);
-
-    /* Right: system status */
     draw_string(820, 8, "[LLD/CLANG]", COLOR_TEXT);
 
-    /* === DOCK CONTROL TRAY === */
-    /* Khay điều khiển nổi retro: X=350, Y=690, W=324, H=60 */
+    draw_classic_app_window(70, 68, 240, 170, "Carbon", COLOR_HE_BG);
+    draw_classic_app_window(330, 92, 240, 170, "Boron", COLOR_LI_BG);
+    draw_classic_app_window(590, 64, 240, 170, "Titanium", COLOR_DB_BG);
+
+    draw_classic_docker_manager();
+    launch_docker_element(0);
+
+    draw_string(70, 590, "System Apps", COLOR_BEVEL_MID);
+    draw_retro_button(70, 610, 54, 30, COLOR_HE_BG);
+    draw_string(86, 618, "Si", COLOR_TEXT);
+    draw_retro_button(132, 610, 54, 30, COLOR_LI_BG);
+    draw_string(144, 618, "Mc", COLOR_TEXT);
+    draw_retro_button(194, 610, 54, 30, COLOR_DB_BG);
+    draw_string(206, 618, "Fe", COLOR_TEXT);
+
     int dock_x = 350, dock_y = 690, dock_w = 324, dock_h = 60;
     draw_retro_button(dock_x, dock_y, dock_w, dock_h, COLOR_LI_BG);
-
-    /* Hard shadow offset 2px xuống-phải */
     draw_line(dock_x + 2, dock_y + dock_h, dock_x + dock_w + 2, dock_y + dock_h, COLOR_BORDER);
     draw_line(dock_x + dock_w, dock_y + 2, dock_x + dock_w, dock_y + dock_h + 2, COLOR_BORDER);
 
-    /* [HE] (Helium) — Phím bấm 3D, X=362, Y=699, W=84, H=42 */
-    draw_retro_button(dock_x + 12, dock_y + 10, 84, 42, COLOR_HE_BG);
+    draw_retro_button_pressed(dock_x + 12, dock_y + 10, 84, 42, COLOR_HE_BG);
     draw_string(dock_x + 42, dock_y + 27, "He", COLOR_TEXT);
-
-    /* Ký hiệu nguyên tử nhỏ */
     draw_string(dock_x + 14, dock_y + 12, "2", COLOR_BEVEL_MID);
 
-    /* [LI] (Lithium) — Phím bấm 3D, kế tiếp */
-    draw_retro_button(dock_x + 108, dock_y + 10, 84, 42, COLOR_LI_BG);
+    draw_retro_button_pressed(dock_x + 108, dock_y + 10, 84, 42, COLOR_LI_BG);
     draw_string(dock_x + 138, dock_y + 27, "Li", COLOR_TEXT);
     draw_string(dock_x + 110, dock_y + 12, "3", COLOR_BEVEL_MID);
 
-    /* [DB] (Dubnium) — Phím bấm 3D, màu nâu gỗ */
-    draw_retro_button(dock_x + 204, dock_y + 10, 84, 42, COLOR_DB_BG);
+    draw_retro_button_pressed(dock_x + 204, dock_y + 10, 84, 42, COLOR_DB_BG);
     draw_string(dock_x + 232, dock_y + 27, "Db", COLOR_TEXT);
     draw_string(dock_x + 206, dock_y + 12, "105", COLOR_BEVEL_MID);
 
-    /* Separator engraved line giữa các phím */
     draw_line(dock_x + 100, dock_y + 14, dock_x + 100, dock_y + dock_h - 14, COLOR_BEVEL_DARK);
     draw_line(dock_x + 101, dock_y + 14, dock_x + 101, dock_y + dock_h - 14, COLOR_BEVEL_LIGHT);
     draw_line(dock_x + 196, dock_y + 14, dock_x + 196, dock_y + dock_h - 14, COLOR_BEVEL_DARK);
     draw_line(dock_x + 197, dock_y + 14, dock_x + 197, dock_y + dock_h - 14, COLOR_BEVEL_LIGHT);
+
+    show_silicon_settings_app();
+    show_moscovium_task_app();
+    show_iron_explorer_app();
 }
 
 /* 5. Hàm kernel_main nhận địa chỉ framebuffer trực tiếp từ Limine hoặc đối số */
@@ -504,6 +457,8 @@ void kernel_main(uint32_t *framebuffer_addr) {
     if (framebuffer_addr != NULL) {
         g_fb_address = framebuffer_addr;
     }
+
+    graphics_init(g_fb_address, g_fb_width, g_fb_height, g_fb_pitch);
 
     /* Chạy hoạt cảnh khởi động */
     hydro_splash_screen();
