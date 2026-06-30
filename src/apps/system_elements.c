@@ -143,17 +143,94 @@ static void sys_draw_slider(int x, int y, const char *label, int knob_pos) {
 }
 
 void show_silicon_settings_app(void) {
-    int x = 200;
-    int y = 120;
-    int w = 550;
-    int h = 400;
+    const int x = 180;
+    const int y = 80;
+    const int w = 660;
+    const int h = 540;
+    const int title_height = 32;
+    const int section1_y = y + 120;
+    const int section2_y = y + 240;
+    const int section3_y = y + 380;
+    const uint32_t title_bg = 0xFFEFEBE9u;
+    const uint32_t checkbox_fill = 0xFFFFFBF5u;
+    const uint32_t brown_charcoal = 0xFF5D4037u;
+    const uint32_t cream_warm = 0xFFF5EFE6u;
+    const uint32_t latte_brown = 0xFFEFEBE9u;
+
     sys_draw_rect_filled(x, y, w, h, COLOR_WHITE);
     sys_draw_rect_outline(x, y, w, h, COLOR_BORDER);
-    sys_draw_string(x + 20, y + 24, "ELEMENT 14: SILICON (SYSTEM SETTINGS)", COLOR_TEXT);
 
-    sys_draw_slider(x + 30, y + 90, "VOLUME", 70);
-    sys_draw_slider(x + 30, y + 150, "BRIGHTNESS", 115);
-    sys_draw_slider(x + 30, y + 210, "MOUSE SPEED", 90);
+    sys_draw_rect_filled(x, y, w, title_height, title_bg);
+    sys_draw_rect_outline(x, y, w, title_height, COLOR_BORDER);
+    for (int stripe = 0; stripe < 4; stripe++) {
+        int stripe_y = y + 6 + stripe * 6;
+        sys_draw_line(x + 22, stripe_y, x + w - 22, stripe_y, COLOR_BORDER);
+    }
+
+    sys_draw_rect_filled(x + 12, y + 10, 12, 12, COLOR_WHITE);
+    sys_draw_rect_outline(x + 12, y + 10, 12, 12, brown_charcoal);
+    sys_draw_line(x + 14, y + 12, x + 22, y + 20, brown_charcoal);
+    sys_draw_line(x + 22, y + 12, x + 14, y + 20, brown_charcoal);
+
+    draw_mac_string(x + 34, y + 10, "⚙️ ELEMENT 14: SILICON (ADVANCED SYSTEM CONTROL)", COLOR_TEXT);
+
+    sys_draw_line(x + 18, section1_y, x + w - 18, section1_y, COLOR_BORDER);
+    sys_draw_line(x + 18, section2_y, x + w - 18, section2_y, COLOR_BORDER);
+    sys_draw_line(x + 18, section3_y, x + w - 18, section3_y, COLOR_BORDER);
+
+    sys_draw_string(x + 20, y + 55, "[01] VISUAL PREFERENCES", COLOR_TEXT);
+    sys_draw_rect_filled(220, y + 80, 14, 14, checkbox_fill);
+    sys_draw_rect_outline(220, y + 80, 14, 14, brown_charcoal);
+    sys_draw_line(222, y + 82, 232, y + 92, COLOR_TEXT);
+    sys_draw_line(232, y + 82, 222, y + 92, COLOR_TEXT);
+    sys_draw_string(240, y + 80, "Title Bar Textures", COLOR_TEXT);
+
+    const int palette_x = 220;
+    const int palette_y = y + 120;
+    const int swatch = 24;
+    const int gap = 12;
+
+    sys_draw_rect_filled(palette_x, palette_y, swatch, swatch, cream_warm);
+    sys_draw_rect_outline(palette_x, palette_y, swatch, swatch, COLOR_BORDER);
+    sys_draw_rect_filled(palette_x + swatch + gap, palette_y, swatch, swatch, 0xFFFFFBF5u);
+    sys_draw_rect_outline(palette_x + swatch + gap, palette_y, swatch, swatch, COLOR_BORDER);
+    sys_draw_rect_filled(palette_x + 2 * (swatch + gap), palette_y, swatch, swatch, latte_brown);
+    sys_draw_rect_outline(palette_x + 2 * (swatch + gap), palette_y, swatch, swatch, COLOR_BORDER);
+    sys_draw_string(palette_x, palette_y + 34, "Wallpaper Tint", COLOR_TEXT);
+
+    sys_draw_string(x + 20, y + 175, "[02] SYSTEM CONSTRAINTS", COLOR_TEXT);
+    draw_retro_button(220, y + 200, 50, 20, brown_charcoal);
+    sys_draw_string(228, y + 204, "ON", COLOR_WHITE);
+    sys_draw_string(280, y + 204, "Mercury Memory Purge", COLOR_TEXT);
+
+    const int fps1_x = 220;
+    const int fps2_x = fps1_x + 132;
+    const int fps_y = y + 330;
+    const int fps_w = 100;
+    const int fps_h = 28;
+
+    sys_draw_rect_filled(fps1_x, fps_y, fps_w, fps_h, latte_brown);
+    sys_draw_rect_outline(fps1_x, fps_y, fps_w, fps_h, COLOR_BORDER);
+    sys_draw_string(fps1_x + 10, fps_y + 8, "[ 30 FPS ]", COLOR_TEXT);
+
+    draw_retro_button(fps2_x, fps_y, fps_w, fps_h, COLOR_WHITE);
+    sys_draw_string(fps2_x + 10, fps_y + 8, "[ 60 FPS ]", COLOR_TEXT);
+
+    sys_draw_string(x + 20, y + 315, "[03] LOCALE & FONTS", COLOR_TEXT);
+    const int dropdown_x = 220;
+    const int dropdown_y = y + 420;
+    const int dropdown_w = 200;
+    const int dropdown_h = 28;
+
+    sys_draw_rect_filled(dropdown_x, dropdown_y, dropdown_w, dropdown_h, brown_charcoal);
+    sys_draw_rect_outline(dropdown_x, dropdown_y, dropdown_w, dropdown_h, COLOR_BORDER);
+    sys_draw_string(dropdown_x + 8, dropdown_y + 8, "NOTION SANS (MINIMAL)", COLOR_TEXT);
+    sys_draw_line(dropdown_x + dropdown_w - 18, dropdown_y + 12, dropdown_x + dropdown_w - 14, dropdown_y + 16, COLOR_TEXT);
+    sys_draw_line(dropdown_x + dropdown_w - 14, dropdown_y + 16, dropdown_x + dropdown_w - 10, dropdown_y + 12, COLOR_TEXT);
+
+    sys_draw_string(x + 20, y + 470, "⚠️ GEOLOCATION PRIVACY ACTIVE:", COLOR_TEXT);
+    sys_draw_string(x + 20, y + 482, "ALL LOCAL DATA IS STRICTLY PROTECTED ON-DEVICE", COLOR_TEXT);
+    sys_draw_string(x + 20, y + 494, "UNDER NORDIC CLEAN COMPLIANCE.", COLOR_TEXT);
 }
 
 void show_moscovium_task_app(void) {

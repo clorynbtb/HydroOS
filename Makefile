@@ -51,8 +51,8 @@ LDFLAGS := -T linker.ld \
            -z max-page-size=0x1000
 
 # --- Cac file nguon va dich ---
-SRC      := kernel.c db.c src/drivers/graphics.c src/apps/office_elements.c src/apps/utility_elements.c src/apps/media_elements.c src/apps/extended_elements.c src/apps/social_elements.c src/apps/system_elements.c
-OBJ      := kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o
+SRC      := kernel.c db.c src/drivers/graphics.c src/apps/office_elements.c src/apps/utility_elements.c src/apps/media_elements.c src/apps/extended_elements.c src/apps/social_elements.c src/apps/system_elements.c src/apps/kernel_services.c
+OBJ      := kernel.o db.o graphics.o office_elements.o utility_elements.o media_elements.o extended_elements.o social_elements.o system_elements.o kernel_services.o
 KERNEL   := kernel.elf
 ISO      := hydroos.iso
 
@@ -126,6 +126,11 @@ system_elements.o: src/apps/system_elements.c
 	@echo "[*] Dang bien dich src/apps/system_elements.c -> system_elements.o..."
 	$(CC) $(CFLAGS) -c src/apps/system_elements.c -o system_elements.o
 	@echo "[OK] Da bien dich xong system_elements.o"
+
+kernel_services.o: src/apps/kernel_services.c
+	@echo "[*] Dang bien dich src/apps/kernel_services.c -> kernel_services.o..."
+	$(CC) $(CFLAGS) -c src/apps/kernel_services.c -o kernel_services.o
+	@echo "[OK] Da bien dich xong kernel_services.o"
 
 # --- Lien ket file object thanh kernel ELF ---
 # Buoc 2: ld.lld lien ket kernel.o -> kernel.elf (dung linker script)

@@ -35,4 +35,9 @@ void show_iron_files_app(void);
 void show_gold_wallet_app(void);
 void show_oxygen_paint_app(void);
 
+void show_rutherfordium_scheduler(void);
+void show_polonium_log_app(void);
+void show_technetium_debugger(void);
+void show_gallium_io_app(void);
+
 #endif /* HYDROOS_ELEMENTS_H */
